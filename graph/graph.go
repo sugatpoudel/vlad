@@ -1,9 +1,13 @@
 package graph
 
+import (
+	"github.com/golang-collections/collections/stack"
+)
+
 // Node represents a validation node
 type Node struct {
-	validate func(int) bool
-	msg      string
+	Validate func(int) bool
+	Msg      string
 }
 
 // edges represents the adjacency list of graph
@@ -55,4 +59,47 @@ func (g *Graph) PutEdge(n1 *Node, n2 *Node) bool {
 		return true
 	}
 	return false
+}
+
+// GetDependents retrives all dependents of the given node
+func (g *Graph) GetDependents(node *Node) []*Node {
+	if deps, ok := g.edges[node]; ok {
+		return deps
+	}
+	return nil
+}
+
+// Validate traverses the validation graph
+func (g *Graph) Validate(num int) []string {
+	errors := make([]string, 0)
+	if len(g.nodes) == 0 {
+		return errors
+	}
+
+	stack := stack.New()
+	stack.Push(g.nodes[0])
+	seen := make(map[*Node]bool)
+	depFailed := make(map[*Node]bool)
+
+	for stack.Len() != 0 {
+		val := stack.Pop()
+		if node, ok := val.(*Node); ok {
+			if _, ok := seen[node]; !ok {
+				failed := false
+				if depFail, ok := depFailed[node]; !ok || !depFail {
+					if !node.Validate(num) {
+						errors = append(errors, node.Msg)
+						failed = true
+					}
+				}
+				seen[node] = true
+				for _, dep := range g.edges[node] {
+					stack.Push(dep)
+					depFailed[dep] = failed
+				}
+			}
+		}
+	}
+
+	return errors
 }
